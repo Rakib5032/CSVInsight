@@ -1,77 +1,214 @@
-import React, { useState } from "react";
-import useAppState from "../store/appState";
-import { analyzeColumn } from "../services/api";
-import Plot from "react-plotly.js";
+import React, { useState, useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
+import { analyzeColumn } from '../services/api';
+import useAppState from '../store/appState';
+import {
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
 
-export default function AnalyzePanel() {
-  const { sessionId, csvSummary } = useAppState();
-  const [selectedColumn, setSelectedColumn] = useState("");
-  const [analysis, setAnalysis] = useState(null);
+const COLORS = ['#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#ef4444', '#06b6d4', '#8b5cf6'];
+
+const AnalyzePanel = () => {
+  const { sessionId, csvSummary, setNotification } = useAppState();
+  const [selectedColumn, setSelectedColumn] = useState('');
+  const [columnAnalysis, setColumnAnalysis] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  if (!csvSummary) return <p className="p-6">Upload a CSV first.</p>;
-
-  const handleAnalyze = async () => {
-    if (!selectedColumn) return;
+  const handleAnalyze = async (columnName) => {
+    if (!columnName) return;
+    
     setLoading(true);
     try {
-      const data = await analyzeColumn(sessionId, selectedColumn);
-      setAnalysis(data.analysis);
-    } catch (err) {
-      console.error(err);
+      const response = await analyzeColumn(sessionId, columnName);
+      setColumnAnalysis(response);
+    } catch (error) {
+      console.error('Analysis error:', error);
+      setNotification({ message: 'Error analyzing column', type: 'error' });
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    if (selectedColumn) {
+      handleAnalyze(selectedColumn);
+    }
+  }, [selectedColumn]);
+
+  if (!csvSummary) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-400">Please upload a CSV file first</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <h2 className="text-2xl font-bold mb-4">Analyze Column</h2>
-      <select
-        className="border p-2 mb-4 w-full"
-        value={selectedColumn}
-        onChange={(e) => setSelectedColumn(e.target.value)}
-      >
-        <option value="">Select Column</option>
-        {csvSummary.column_names.map((col) => (
-          <option key={col} value={col}>
-            {col}
-          </option>
-        ))}
-      </select>
-      <button
-        onClick={handleAnalyze}
-        className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-500"
-        disabled={loading}
-      >
-        {loading ? "Analyzing..." : "Analyze"}
-      </button>
+    <div>
+      <div className="mb-8">
+        <h2 className="text-3xl font-bold mb-2">Visualization & Analysis</h2>
+        <p className="text-gray-400">Explore your data with interactive charts</p>
+      </div>
 
-      {analysis && (
-        <div className="mt-6">
-          <h3 className="text-xl font-bold mb-2">Analysis Result</h3>
-          <pre className="bg-white p-4 rounded shadow mb-4">
-            {JSON.stringify(analysis, null, 2)}
-          </pre>
+      <div className="mb-6">
+        <label className="block text-sm font-medium mb-2">Select Column to Analyze</label>
+        <select
+          value={selectedColumn}
+          onChange={(e) => setSelectedColumn(e.target.value)}
+          className="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 focus:border-violet-500 focus:outline-none text-white"
+        >
+          <option value="">Choose a column...</option>
+          {csvSummary.column_names.map((col) => (
+            <option key={col} value={col}>
+              {col}
+            </option>
+          ))}
+        </select>
+      </div>
 
-          {analysis.type === "numeric" && (
-            <Plot
-              data={[
-                {
-                  x: Array.from({ length: analysis.count }, (_, i) => i + 1),
-                  y: Array.from({ length: analysis.count }, () =>
-                    Math.random() * (analysis.max - analysis.min) + analysis.min
-                  ),
-                  type: "scatter",
-                  mode: "lines+markers",
-                  marker: { color: "blue" },
-                },
-              ]}
-              layout={{ width: 700, height: 400, title: `${selectedColumn} Chart` }}
-            />
-          )}
+      {loading && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="animate-spin text-violet-400" size={48} />
+        </div>
+      )}
+
+      {columnAnalysis && !loading && (
+        <div className="grid lg:grid-cols-2 gap-6 animate-fadeIn">
+          {/* Statistics Panel */}
+          <div className="p-6 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 border border-white/10">
+            <h3 className="text-xl font-bold mb-4">Statistics</h3>
+            {columnAnalysis.type === 'numeric' ? (
+              <div className="space-y-3">
+                <div className="flex justify-between p-3 rounded-lg bg-white/10">
+                  <span className="text-gray-400">Minimum</span>
+                  <span className="font-bold">{columnAnalysis.stats.min.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between p-3 rounded-lg bg-white/10">
+                  <span className="text-gray-400">Maximum</span>
+                  <span className="font-bold">{columnAnalysis.stats.max.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between p-3 rounded-lg bg-white/10">
+                  <span className="text-gray-400">Mean</span>
+                  <span className="font-bold">{columnAnalysis.stats.mean.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between p-3 rounded-lg bg-white/10">
+                  <span className="text-gray-400">Median</span>
+                  <span className="font-bold">{columnAnalysis.stats.median.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between p-3 rounded-lg bg-white/10">
+                  <span className="text-gray-400">Std Deviation</span>
+                  <span className="font-bold">{columnAnalysis.stats.std.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between p-3 rounded-lg bg-white/10">
+                  <span className="text-gray-400">25th Percentile</span>
+                  <span className="font-bold">{columnAnalysis.stats.q25.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between p-3 rounded-lg bg-white/10">
+                  <span className="text-gray-400">75th Percentile</span>
+                  <span className="font-bold">{columnAnalysis.stats.q75.toFixed(2)}</span>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex justify-between p-3 rounded-lg bg-white/10">
+                  <span className="text-gray-400">Unique Values</span>
+                  <span className="font-bold">{columnAnalysis.stats.unique_count}</span>
+                </div>
+                <div className="flex justify-between p-3 rounded-lg bg-white/10">
+                  <span className="text-gray-400">Total Count</span>
+                  <span className="font-bold">{columnAnalysis.stats.total_count}</span>
+                </div>
+                <div className="flex justify-between p-3 rounded-lg bg-white/10">
+                  <span className="text-gray-400">Null Count</span>
+                  <span className="font-bold">{columnAnalysis.stats.null_count}</span>
+                </div>
+                {columnAnalysis.stats.mode && (
+                  <div className="flex justify-between p-3 rounded-lg bg-white/10">
+                    <span className="text-gray-400">Most Common</span>
+                    <span className="font-bold">{columnAnalysis.stats.mode}</span>
+                  </div>
+                )}
+                <div className="mt-4">
+                  <p className="text-sm text-gray-400 mb-2">Top Values</p>
+                  <div className="max-h-48 overflow-y-auto">
+                    {columnAnalysis.stats.top_values.map((item, i) => (
+                      <div key={i} className="flex justify-between p-2 text-sm hover:bg-white/5 rounded">
+                        <span className="truncate mr-2">{item.name}</span>
+                        <span className="text-violet-400">{item.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Visualization Panel */}
+          <div className="p-6 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 border border-white/10">
+            <h3 className="text-xl font-bold mb-4">Visualization</h3>
+            <ResponsiveContainer width="100%" height={350}>
+              {columnAnalysis.type === 'numeric' ? (
+                <BarChart data={columnAnalysis.chart_data}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff20" />
+                  <XAxis 
+                    dataKey="range" 
+                    stroke="#fff" 
+                    tick={{ fill: '#9ca3af', fontSize: 11 }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={80}
+                  />
+                  <YAxis stroke="#fff" tick={{ fill: '#9ca3af' }} />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#1f2937', 
+                      border: '1px solid #374151',
+                      borderRadius: '8px'
+                    }} 
+                  />
+                  <Bar dataKey="count" fill="#8b5cf6" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              ) : (
+                <PieChart>
+                  <Pie
+                    data={columnAnalysis.chart_data}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={(entry) => `${entry.name}: ${entry.value}`}
+                    outerRadius={120}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {columnAnalysis.chart_data.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#1f2937', 
+                      border: '1px solid #374151',
+                      borderRadius: '8px'
+                    }} 
+                  />
+                </PieChart>
+              )}
+            </ResponsiveContainer>
+          </div>
         </div>
       )}
     </div>
   );
-}
+};
+
+export default AnalyzePanel;
