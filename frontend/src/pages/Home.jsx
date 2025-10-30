@@ -1,6 +1,7 @@
 import React from 'react';
 import UploadPanel from '../components/UploadPanel';
 import AnalyzePanel from '../components/AnalyzePanel';
+import AdvancedAnalysisPanel from '../components/AdvancedAnalysisPanel';
 import PreprocessPanel from '../components/PreprocessPanel';
 import useAppState from '../store/appState';
 
@@ -13,6 +14,8 @@ const Home = () => {
         return <UploadPanel />;
       case 'analyze':
         return <AnalyzePanel />;
+      case 'advanced':
+        return <AdvancedAnalysisPanel />;
       case 'preprocess':
         return <PreprocessPanel />;
       case 'ml':

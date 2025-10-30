@@ -24,6 +24,14 @@ const AnalyzePanel = () => {
   const [columnAnalysis, setColumnAnalysis] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // Reset selected column if it's been deleted
+  useEffect(() => {
+    if (selectedColumn && csvSummary && !csvSummary.column_names.includes(selectedColumn)) {
+      setSelectedColumn('');
+      setColumnAnalysis(null);
+    }
+  }, [csvSummary, selectedColumn]);
+
   const handleAnalyze = async (columnName) => {
     if (!columnName) return;
     
@@ -68,11 +76,14 @@ const AnalyzePanel = () => {
           className="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 focus:border-violet-500 focus:outline-none text-white"
         >
           <option value="">Choose a column...</option>
-          {csvSummary.column_names.map((col) => (
-            <option key={col} value={col}>
-              {col}
-            </option>
-          ))}
+          {csvSummary.column_names.map((col) => {
+            const isNumeric = csvSummary.numeric_columns.includes(col);
+            return (
+              <option key={col} value={col}>
+                {col} {isNumeric ? '(Numeric)' : '(Categorical)'}
+              </option>
+            );
+          })}
         </select>
       </div>
 
@@ -86,7 +97,7 @@ const AnalyzePanel = () => {
         <div className="grid lg:grid-cols-2 gap-6 animate-fadeIn">
           {/* Statistics Panel */}
           <div className="p-6 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 border border-white/10">
-            <h3 className="text-xl font-bold mb-4">Statistics</h3>
+            <h3 className="text-xl font-bold mb-4">Statistics for "{selectedColumn}"</h3>
             {columnAnalysis.type === 'numeric' ? (
               <div className="space-y-3">
                 <div className="flex justify-between p-3 rounded-lg bg-white/10">
@@ -117,6 +128,12 @@ const AnalyzePanel = () => {
                   <span className="text-gray-400">75th Percentile</span>
                   <span className="font-bold">{columnAnalysis.stats.q75.toFixed(2)}</span>
                 </div>
+                <div className="flex justify-between p-3 rounded-lg bg-white/10">
+                  <span className="text-gray-400">Null Count</span>
+                  <span className={`font-bold ${columnAnalysis.stats.null_count > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                    {columnAnalysis.stats.null_count}
+                  </span>
+                </div>
               </div>
             ) : (
               <div className="space-y-3">
@@ -130,12 +147,14 @@ const AnalyzePanel = () => {
                 </div>
                 <div className="flex justify-between p-3 rounded-lg bg-white/10">
                   <span className="text-gray-400">Null Count</span>
-                  <span className="font-bold">{columnAnalysis.stats.null_count}</span>
+                  <span className={`font-bold ${columnAnalysis.stats.null_count > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                    {columnAnalysis.stats.null_count}
+                  </span>
                 </div>
                 {columnAnalysis.stats.mode && (
                   <div className="flex justify-between p-3 rounded-lg bg-white/10">
                     <span className="text-gray-400">Most Common</span>
-                    <span className="font-bold">{columnAnalysis.stats.mode}</span>
+                    <span className="font-bold truncate ml-2">{columnAnalysis.stats.mode}</span>
                   </div>
                 )}
                 <div className="mt-4">
@@ -144,7 +163,7 @@ const AnalyzePanel = () => {
                     {columnAnalysis.stats.top_values.map((item, i) => (
                       <div key={i} className="flex justify-between p-2 text-sm hover:bg-white/5 rounded">
                         <span className="truncate mr-2">{item.name}</span>
-                        <span className="text-violet-400">{item.value}</span>
+                        <span className="text-violet-400 font-medium">{item.value}</span>
                       </div>
                     ))}
                   </div>

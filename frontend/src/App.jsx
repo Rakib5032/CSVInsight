@@ -1,11 +1,11 @@
 import React from 'react';
-import { Upload, BarChart3, Settings, Brain, FileText, TrendingUp, CheckCircle, AlertCircle } from 'lucide-react';
+import { Upload, BarChart3, Settings, Brain, FileText, TrendingUp, CheckCircle, AlertCircle, Activity } from 'lucide-react';
 import Home from './pages/Home';
 import Footer from './components/Footer';
 import useAppState from './store/appState';
 
 function App() {
-  const { activeTab, setActiveTab, csvSummary, notification, csvData } = useAppState();
+  const { activeTab, setActiveTab, csvSummary, notification } = useAppState();
 
   const TabButton = ({ icon: Icon, label, value }) => (
     <button
@@ -73,6 +73,7 @@ function App() {
           <div className="flex gap-2 overflow-x-auto">
             <TabButton icon={Upload} label="Upload" value="upload" />
             <TabButton icon={BarChart3} label="Analyze" value="analyze" />
+            <TabButton icon={Activity} label="Advanced" value="advanced" />
             <TabButton icon={Settings} label="Preprocess" value="preprocess" />
             <TabButton icon={Brain} label="ML Models" value="ml" />
           </div>
