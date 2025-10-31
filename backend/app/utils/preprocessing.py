@@ -36,16 +36,22 @@ def handle_missing_values(df: pd.DataFrame, strategy: str = 'mean') -> pd.DataFr
     return df_copy
 
 def one_hot_encode(df: pd.DataFrame, columns: List[str]) -> pd.DataFrame:
-    """Apply one-hot encoding to specified columns"""
-    return pd.get_dummies(df, columns=columns, drop_first=True)
+    """Apply one-hot encoding to specified columns - ML Ready with 0 and 1"""
+    df_copy = df.copy()
+    
+    # Use get_dummies with dtype int to ensure 0 and 1 instead of True/False
+    encoded_df = pd.get_dummies(df_copy, columns=columns, drop_first=False, dtype=int)
+    
+    return encoded_df
 
 def label_encode(df: pd.DataFrame, columns: List[str]) -> pd.DataFrame:
-    """Apply label encoding to specified columns"""
+    """Apply label encoding to specified columns - ML Ready with integer labels"""
     df_copy = df.copy()
     le = LabelEncoder()
     
     for col in columns:
         if col in df_copy.columns:
+            # LabelEncoder already returns integers (0, 1, 2, ...)
             df_copy[col] = le.fit_transform(df_copy[col].astype(str))
     
     return df_copy

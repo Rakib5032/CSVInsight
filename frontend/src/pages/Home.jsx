@@ -3,6 +3,7 @@ import UploadPanel from '../components/UploadPanel';
 import AnalyzePanel from '../components/AnalyzePanel';
 import AdvancedAnalysisPanel from '../components/AdvancedAnalysisPanel';
 import PreprocessPanel from '../components/PreprocessPanel';
+import PreviewPanel from '../components/PreviewPanel';
 import useAppState from '../store/appState';
 
 const Home = () => {
@@ -12,6 +13,8 @@ const Home = () => {
     switch (activeTab) {
       case 'upload':
         return <UploadPanel />;
+      case 'preview':
+        return <PreviewPanel />;
       case 'analyze':
         return <AnalyzePanel />;
       case 'advanced':
@@ -24,10 +27,10 @@ const Home = () => {
             <h2 className="text-3xl font-bold mb-4">Machine Learning Models</h2>
             <p className="text-gray-400 mb-8">Coming Soon...</p>
             <div className="max-w-2xl mx-auto p-8 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 border border-white/10">
-              <p className="text-left text-gray-300">
+              <p className="text-left text-gray-300 mb-4">
                 The ML module will include:
               </p>
-              <ul className="mt-4 space-y-2 text-left text-gray-400">
+              <ul className="space-y-2 text-left text-gray-400">
                 <li>• Classification models (Logistic Regression, Random Forest, SVM)</li>
                 <li>• Regression models (Linear, Ridge, Lasso)</li>
                 <li>• Clustering (K-Means, DBSCAN)</li>

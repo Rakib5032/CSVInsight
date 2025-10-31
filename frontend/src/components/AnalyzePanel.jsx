@@ -94,10 +94,13 @@ const AnalyzePanel = () => {
               <YAxis stroke="#fff" tick={{ fill: '#9ca3af' }} />
               <Tooltip 
                 contentStyle={{ 
-                  backgroundColor: '#1f2937', 
-                  border: '1px solid #374151',
-                  borderRadius: '8px'
-                }} 
+                  backgroundColor: '#f3f4f6', 
+                  border: '1px solid #9ca3af',
+                  borderRadius: '8px',
+                  color: '#111827'
+                }}
+                itemStyle={{ color: '#111827' }}
+                labelStyle={{ color: '#111827', fontWeight: 'bold' }}
               />
               <Bar dataKey="count" fill="#8b5cf6" radius={[8, 8, 0, 0]} />
             </BarChart>
@@ -181,32 +184,61 @@ const AnalyzePanel = () => {
       // Categorical data
       const data = columnAnalysis.chart_data;
 
-      switch (currentVizType) {
+                    switch (currentVizType) {
         case 'pie':
+          // Calculate percentages
+          const total = data.reduce((sum, item) => sum + item.value, 0);
+          const dataWithPercentage = data.map(item => ({
+            ...item,
+            percentage: ((item.value / total) * 100).toFixed(1)
+          }));
+          
           return (
-            <PieChart>
-              <Pie
-                data={data}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={(entry) => `${entry.name}: ${entry.value}`}
-                outerRadius={120}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {data.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            <>
+              <PieChart>
+                <Pie
+                  data={dataWithPercentage}
+                  cx="50%"
+                  cy="45%"
+                  labelLine={false}
+                  label={false}
+                  outerRadius={100}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {dataWithPercentage.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: '#f3f4f6', 
+                    border: '1px solid #9ca3af',
+                    borderRadius: '8px',
+                    color: '#111827'
+                  }}
+                  itemStyle={{ color: '#111827' }}
+                  labelStyle={{ color: '#111827', fontWeight: 'bold' }}
+                />
+              </PieChart>
+              {/* Legend below chart */}
+              <div className="mt-4 grid grid-cols-1 gap-2 max-h-32 overflow-y-auto">
+                {dataWithPercentage.map((entry, index) => (
+                  <div key={index} className="flex items-center gap-2 text-xs">
+                    <div 
+                      className="w-3 h-3 rounded-sm flex-shrink-0" 
+                      style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                    />
+                    <span className="text-gray-300 truncate flex-1" title={entry.name}>
+                      {entry.name}
+                    </span>
+                    <span className="text-gray-400 font-medium">
+                      {entry.value} ({entry.percentage}%)
+                    </span>
+                  </div>
                 ))}
-              </Pie>
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#1f2937', 
-                  border: '1px solid #374151',
-                  borderRadius: '8px'
-                }} 
-              />
-            </PieChart>
+              </div>
+            </>
           );
         
         case 'bar':
