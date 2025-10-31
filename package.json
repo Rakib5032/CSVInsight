@@ -11,7 +11,9 @@
     "axios": "^1.6.6"
   },
   "devDependencies": {
-    "vite": "^5.4.21",
-    "serve": "^14.2.5"
+    "@vitejs/plugin-react": "^5.1.0",
+    "cross-env": "^10.1.0",
+    "serve": "^14.2.5",
+    "vite": "^5.4.21"
   }
 }
