@@ -1,11 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes import upload, analyze, preprocess
+import os
 
 app = FastAPI(title="Lensify API", version="1.0.0")
 
 # CORS middleware
 # For Render deployment, allow your frontend URL or all origins temporarily
+# Get frontend URL from environment variable (for production)
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Replace "*" with your frontend URL in production
