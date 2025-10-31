@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Zap, Settings, CheckCircle, Info } from 'lucide-react';
+import { Zap, Settings, CheckCircle, Info, Sparkles } from 'lucide-react';
 import {
   handleMissingValues,
   removeDuplicates,
@@ -15,12 +15,11 @@ const PreprocessPanel = () => {
   const [selectedColumns, setSelectedColumns] = useState([]);
   const [missingStrategy, setMissingStrategy] = useState('mean');
   const [encodeMethod, setEncodeMethod] = useState('label');
+  const [preprocessedColumns, setPreprocessedColumns] = useState(new Set());
 
-  // Refresh summary after operations
   const refreshSummary = async () => {
     try {
       const response = await getSessionInfo(sessionId);
-      // Update summary with new column list
       setCsvSummary({
         ...csvSummary,
         columns: response.columns,
@@ -48,12 +47,10 @@ const PreprocessPanel = () => {
     );
   };
 
-  // Check if selected columns are numeric
   const selectedNumericColumns = selectedColumns.filter(col => 
     csvSummary.numeric_columns.includes(col)
   );
 
-  // Check if selected columns are categorical
   const selectedCategoricalColumns = selectedColumns.filter(col => 
     csvSummary.categorical_columns.includes(col)
   );
@@ -61,11 +58,17 @@ const PreprocessPanel = () => {
   const canNormalize = selectedNumericColumns.length > 0;
   const canEncode = selectedCategoricalColumns.length > 0;
 
+  const markAsPreprocessed = (columns) => {
+    setPreprocessedColumns(prev => new Set([...prev, ...columns]));
+  };
+
   const handleMissing = async () => {
     setLoading(true);
     try {
       const response = await handleMissingValues(sessionId, missingStrategy);
       setNotification({ message: response.message, type: 'success' });
+      // Mark all columns as preprocessed
+      markAsPreprocessed(csvSummary.column_names);
       await refreshSummary();
     } catch (error) {
       setNotification({ message: 'Error handling missing values', type: 'error' });
@@ -103,6 +106,7 @@ const PreprocessPanel = () => {
     try {
       const response = await encodeColumns(sessionId, selectedCategoricalColumns, encodeMethod);
       setNotification({ message: response.message, type: 'success' });
+      markAsPreprocessed(selectedCategoricalColumns);
       setSelectedColumns([]);
       await refreshSummary();
     } catch (error) {
@@ -125,6 +129,7 @@ const PreprocessPanel = () => {
     try {
       const response = await normalizeData(sessionId, selectedNumericColumns);
       setNotification({ message: response.message, type: 'success' });
+      markAsPreprocessed(selectedNumericColumns);
       setSelectedColumns([]);
       await refreshSummary();
     } catch (error) {
@@ -144,7 +149,6 @@ const PreprocessPanel = () => {
     try {
       const response = await dropColumns(sessionId, selectedColumns);
       
-      // Update csvSummary to remove dropped columns
       const updatedNumericColumns = csvSummary.numeric_columns.filter(
         col => !selectedColumns.includes(col)
       );
@@ -163,6 +167,13 @@ const PreprocessPanel = () => {
         categorical_columns: updatedCategoricalColumns,
       });
 
+      // Remove from preprocessed set
+      setPreprocessedColumns(prev => {
+        const newSet = new Set(prev);
+        selectedColumns.forEach(col => newSet.delete(col));
+        return newSet;
+      });
+
       setNotification({ message: response.message, type: 'success' });
       setSelectedColumns([]);
     } catch (error) {
@@ -178,12 +189,31 @@ const PreprocessPanel = () => {
     return 'unknown';
   };
 
+  const isPreprocessed = (column) => preprocessedColumns.has(column);
+
   return (
     <div className="max-w-6xl mx-auto">
       <div className="mb-8">
         <h2 className="text-3xl font-bold mb-2">Data Preprocessing</h2>
         <p className="text-gray-400">Clean and transform your data</p>
       </div>
+
+      {/* Preprocessed Columns Info */}
+      {preprocessedColumns.size > 0 && (
+        <div className="mb-6 p-4 rounded-2xl bg-green-500/10 border border-green-500/30">
+          <div className="flex items-start gap-2">
+            <Sparkles size={20} className="text-green-400 mt-0.5" />
+            <div>
+              <div className="font-medium text-green-400 mb-1">
+                {preprocessedColumns.size} column(s) preprocessed
+              </div>
+              <div className="text-sm text-gray-400">
+                Columns marked in green have been modified
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid md:grid-cols-2 gap-6">
         {/* Quick Actions Panel */}
@@ -271,10 +301,13 @@ const PreprocessPanel = () => {
             <div className="max-h-48 overflow-y-auto p-3 rounded-lg bg-white/10 border border-white/20">
               {csvSummary.column_names.map((col) => {
                 const colType = getColumnType(col);
+                const isProcessed = isPreprocessed(col);
                 return (
                   <label
                     key={col}
-                    className="flex items-center gap-2 p-2 hover:bg-white/10 rounded cursor-pointer"
+                    className={`flex items-center gap-2 p-2 hover:bg-white/10 rounded cursor-pointer transition-all ${
+                      isProcessed ? 'bg-green-500/10 border border-green-500/30' : ''
+                    }`}
                   >
                     <input
                       type="checkbox"
@@ -282,7 +315,12 @@ const PreprocessPanel = () => {
                       onChange={() => handleColumnSelect(col)}
                       className="w-4 h-4"
                     />
-                    <span className="text-sm flex-1">{col}</span>
+                    <span className={`text-sm flex-1 ${isProcessed ? 'text-green-400 font-medium' : ''}`}>
+                      {col}
+                    </span>
+                    {isProcessed && (
+                      <Sparkles size={14} className="text-green-400" />
+                    )}
                     <span className={`text-xs px-2 py-0.5 rounded ${
                       colType === 'numeric' 
                         ? 'bg-blue-500/20 text-blue-400' 

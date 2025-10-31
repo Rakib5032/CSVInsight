@@ -3,12 +3,21 @@ from pydantic import BaseModel
 import pandas as pd
 import numpy as np
 from app.utils.data_store import get_dataframe
+import math
 
 router = APIRouter()
 
 class AnalyzeRequest(BaseModel):
     session_id: str
     column_name: str
+
+def safe_float(value):
+    """Convert value to JSON-safe float"""
+    if pd.isna(value) or math.isnan(value) if isinstance(value, float) else False:
+        return None
+    if math.isinf(value) if isinstance(value, float) else False:
+        return None
+    return float(value)
 
 @router.post("/analyze")
 async def analyze_column(request: AnalyzeRequest):
@@ -36,15 +45,15 @@ async def analyze_column(request: AnalyzeRequest):
     
     # Numeric column analysis
     if pd.api.types.is_numeric_dtype(column_data):
-        # Calculate statistics
+        # Calculate statistics with safe conversion
         stats = {
-            "min": float(clean_data.min()),
-            "max": float(clean_data.max()),
-            "mean": float(clean_data.mean()),
-            "median": float(clean_data.median()),
-            "std": float(clean_data.std()),
-            "q25": float(clean_data.quantile(0.25)),
-            "q75": float(clean_data.quantile(0.75)),
+            "min": safe_float(clean_data.min()),
+            "max": safe_float(clean_data.max()),
+            "mean": safe_float(clean_data.mean()),
+            "median": safe_float(clean_data.median()),
+            "std": safe_float(clean_data.std()),
+            "q25": safe_float(clean_data.quantile(0.25)),
+            "q75": safe_float(clean_data.quantile(0.75)),
             "null_count": int(column_data.isnull().sum()),
             "total_count": len(column_data)
         }
@@ -53,10 +62,10 @@ async def analyze_column(request: AnalyzeRequest):
         hist, bin_edges = np.histogram(clean_data, bins=15)
         histogram_data = [
             {
-                "range": f"{bin_edges[i]:.2f}-{bin_edges[i+1]:.2f}",
+                "range": f"{safe_float(bin_edges[i]):.2f}-{safe_float(bin_edges[i+1]):.2f}",
                 "count": int(hist[i]),
-                "bin_start": float(bin_edges[i]),
-                "bin_end": float(bin_edges[i+1])
+                "bin_start": safe_float(bin_edges[i]),
+                "bin_end": safe_float(bin_edges[i+1])
             }
             for i in range(len(hist))
         ]
@@ -114,21 +123,30 @@ async def get_correlations(request: dict):
     # Calculate correlation matrix
     corr_matrix = numeric_df.corr()
     
-    # Convert to list of dicts for frontend
+    # Convert to list of dicts for frontend with safe float conversion
     correlations = []
     for i, col1 in enumerate(corr_matrix.columns):
         for j, col2 in enumerate(corr_matrix.columns):
             if i < j:  # Only upper triangle
-                correlations.append({
-                    "column1": col1,
-                    "column2": col2,
-                    "correlation": float(corr_matrix.iloc[i, j])
-                })
+                corr_val = safe_float(corr_matrix.iloc[i, j])
+                if corr_val is not None:
+                    correlations.append({
+                        "column1": col1,
+                        "column2": col2,
+                        "correlation": corr_val
+                    })
+    
+    # Convert matrix to dict with safe values
+    matrix_dict = {}
+    for col1 in corr_matrix.columns:
+        matrix_dict[col1] = {}
+        for col2 in corr_matrix.columns:
+            matrix_dict[col1][col2] = safe_float(corr_matrix.loc[col1, col2]) or 0.0
     
     return {
         "correlations": correlations,
         "columns": corr_matrix.columns.tolist(),
-        "matrix": corr_matrix.to_dict()
+        "matrix": matrix_dict
     }
 
 @router.get("/preview/{session_id}")
@@ -139,10 +157,43 @@ async def preview_data(session_id: str, rows: int = 10):
     if df is None:
         raise HTTPException(status_code=404, detail="Session not found")
     
-    preview = df.head(rows).to_dict(orient='records')
+    # Convert to records and handle NaN values
+    preview_data = []
+    for _, row in df.head(rows).iterrows():
+        row_dict = {}
+        for col in df.columns:
+            value = row[col]
+            if pd.isna(value):
+                row_dict[col] = None
+            elif isinstance(value, (np.integer, np.floating)):
+                row_dict[col] = safe_float(value)
+            else:
+                row_dict[col] = str(value)
+        preview_data.append(row_dict)
     
     return {
-        "preview": preview,
+        "preview": preview_data,
         "total_rows": len(df),
         "columns": df.columns.tolist()
     }
+
+@router.get("/download/{session_id}")
+async def download_csv(session_id: str):
+    """Download the current CSV"""
+    from fastapi.responses import StreamingResponse
+    import io
+    
+    df = get_dataframe(session_id)
+    if df is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    # Convert DataFrame to CSV
+    stream = io.StringIO()
+    df.to_csv(stream, index=False)
+    stream.seek(0)
+    
+    return StreamingResponse(
+        iter([stream.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=processed_data_{session_id[:8]}.csv"}
+    )

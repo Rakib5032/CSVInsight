@@ -1,11 +1,30 @@
 import React from 'react';
-import { Upload, BarChart3, Settings, Brain, FileText, TrendingUp, CheckCircle, AlertCircle, Activity } from 'lucide-react';
+import { Upload, BarChart3, Settings, Brain, FileText, TrendingUp, CheckCircle, AlertCircle, Activity, Download, Eye } from 'lucide-react';
 import Home from './pages/Home';
 import Footer from './components/Footer';
 import useAppState from './store/appState';
 
 function App() {
-  const { activeTab, setActiveTab, csvSummary, notification } = useAppState();
+  const { activeTab, setActiveTab, csvSummary, notification, sessionId } = useAppState();
+
+  const handleDownload = async () => {
+    if (!sessionId) return;
+    
+    try {
+      const response = await fetch(`http://localhost:8000/api/download/${sessionId}`);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `processed_data_${sessionId.substring(0, 8)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Download error:', error);
+    }
+  };
 
   const TabButton = ({ icon: Icon, label, value }) => (
     <button
@@ -51,18 +70,30 @@ function App() {
                 <p className="text-xs text-gray-400">Intelligent Data Analysis</p>
               </div>
             </div>
-            {csvSummary && (
-              <div className="hidden md:flex items-center gap-4 text-sm">
-                <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-white/10">
-                  <FileText size={16} className="text-violet-400" />
-                  <span>{csvSummary.rows.toLocaleString()} rows</span>
-                </div>
-                <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-white/10">
-                  <TrendingUp size={16} className="text-pink-400" />
-                  <span>{csvSummary.columns} columns</span>
-                </div>
-              </div>
-            )}
+            <div className="flex items-center gap-4">
+              {csvSummary && (
+                <>
+                  <div className="hidden md:flex items-center gap-4 text-sm">
+                    <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-white/10">
+                      <FileText size={16} className="text-violet-400" />
+                      <span>{csvSummary.rows.toLocaleString()} rows</span>
+                    </div>
+                    <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-white/10">
+                      <TrendingUp size={16} className="text-pink-400" />
+                      <span>{csvSummary.columns} columns</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleDownload}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 transition-all font-medium"
+                    title="Download current CSV"
+                  >
+                    <Download size={18} />
+                    <span className="hidden sm:inline">Download</span>
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -71,7 +102,8 @@ function App() {
       <nav className="border-b border-white/10 backdrop-blur-sm bg-black/20 sticky top-0 z-40">
         <div className="container mx-auto px-4 py-3">
           <div className="flex gap-2 overflow-x-auto">
-            <TabButton icon={Upload} label="Upload" value="upload" />
+            <TabButton icon={Upload} label="Dashboard" value="upload" />
+            {csvSummary && <TabButton icon={Eye} label="Preview" value="preview" />}
             <TabButton icon={BarChart3} label="Analyze" value="analyze" />
             <TabButton icon={Activity} label="Advanced" value="advanced" />
             <TabButton icon={Settings} label="Preprocess" value="preprocess" />
