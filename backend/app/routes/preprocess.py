@@ -138,20 +138,36 @@ async def encode_columns_endpoint(request: EncodeRequest):
     if df is None:
         raise HTTPException(status_code=404, detail="Session not found")
     
-    if request.method == 'one_hot':
-        df = one_hot_encode(df, request.columns)
-    elif request.method == 'label':
-        df = label_encode(df, request.columns)
-    else:
-        raise HTTPException(status_code=400, detail="Invalid encoding method")
-    
-    store_dataframe(request.session_id, df)
-    
-    return {
-        "message": f"Applied {request.method} encoding",
-        "encoded_columns": request.columns,
-        "new_column_count": len(df.columns)
-    }
+    try:
+        if request.method == 'one_hot':
+            # Check unique values before encoding
+            for col in request.columns:
+                if col in df.columns:
+                    unique_count = df[col].nunique()
+                    if unique_count > 100:
+                        raise HTTPException(
+                            status_code=400, 
+                            detail=f"Column '{col}' has {unique_count} unique values. "
+                                   f"One-hot encoding is not recommended for high cardinality columns. "
+                                   f"Please use Label Encoding instead or drop this column."
+                        )
+            df = one_hot_encode(df, request.columns)
+        elif request.method == 'label':
+            df = label_encode(df, request.columns)
+        else:
+            raise HTTPException(status_code=400, detail="Invalid encoding method")
+        
+        store_dataframe(request.session_id, df)
+        
+        return {
+            "message": f"Applied {request.method} encoding successfully",
+            "encoded_columns": request.columns,
+            "new_column_count": len(df.columns)
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Encoding error: {str(e)}")
 
 @router.post("/normalize")
 async def normalize_endpoint(request: NormalizeRequest):

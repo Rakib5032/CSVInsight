@@ -133,6 +133,27 @@ const PreprocessPanel = () => {
       return;
     }
 
+    // Warning for one-hot encoding with high cardinality
+    if (encodeMethod === 'one_hot' && csvSummary.column_info) {
+      for (const col of selectedCategoricalColumns) {
+        const colInfo = csvSummary.column_info.columns.find(c => c.name === col);
+        if (colInfo && colInfo.unique_count > 100) {
+          setNotification({
+            message: `Warning: Column '${col}' has ${colInfo.unique_count} unique values. One-hot encoding is not recommended. Use Label Encoding instead.`,
+            type: 'error'
+          });
+          return;
+        }
+        if (colInfo && colInfo.unique_count > 50) {
+          const confirm = window.confirm(
+            `Column '${col}' has ${colInfo.unique_count} unique values. ` +
+            `This will create ${colInfo.unique_count} new columns. Continue?`
+          );
+          if (!confirm) return;
+        }
+      }
+    }
+
     setLoading(true);
     try {
       const response = await encodeColumns(sessionId, selectedCategoricalColumns, encodeMethod);
@@ -141,7 +162,8 @@ const PreprocessPanel = () => {
       setSelectedColumns([]);
       await refreshSummary();
     } catch (error) {
-      setNotification({ message: 'Error encoding columns', type: 'error' });
+      const errorMsg = error.response?.data?.detail || 'Error encoding columns';
+      setNotification({ message: errorMsg, type: 'error' });
     } finally {
       setLoading(false);
     }

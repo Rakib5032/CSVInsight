@@ -36,8 +36,30 @@ def handle_missing_values(df: pd.DataFrame, strategy: str = 'mean') -> pd.DataFr
     return df_copy
 
 def one_hot_encode(df: pd.DataFrame, columns: List[str]) -> pd.DataFrame:
-    """Apply one-hot encoding to specified columns - ML Ready with 0 and 1"""
+    """Apply one-hot encoding to specified columns - ML Ready with 0 and 1
+    
+    IMPORTANT: Validates that columns don't have too many unique values
+    to prevent memory errors
+    """
     df_copy = df.copy()
+    
+    # Validate each column before encoding
+    for col in columns:
+        if col in df_copy.columns:
+            unique_count = df_copy[col].nunique()
+            
+            # Prevent encoding if too many unique values (would create too many columns)
+            if unique_count > 100:
+                raise ValueError(
+                    f"Column '{col}' has {unique_count} unique values. "
+                    f"One-hot encoding is not recommended for columns with more than 100 unique values. "
+                    f"Consider using Label Encoding instead, or drop this column."
+                )
+            
+            # Warn if many unique values but still processable
+            if unique_count > 50:
+                print(f"Warning: Column '{col}' has {unique_count} unique values. "
+                      f"This will create {unique_count} new columns.")
     
     # Use get_dummies with dtype int to ensure 0 and 1 instead of True/False
     encoded_df = pd.get_dummies(df_copy, columns=columns, drop_first=False, dtype=int)
@@ -63,8 +85,15 @@ def normalize_data(df: pd.DataFrame, columns: List[str] = None) -> pd.DataFrame:
     if columns is None:
         columns = df_copy.select_dtypes(include=[np.number]).columns.tolist()
     
+    # Only normalize columns that exist and are numeric
+    valid_columns = [col for col in columns if col in df_copy.columns 
+                     and pd.api.types.is_numeric_dtype(df_copy[col])]
+    
+    if not valid_columns:
+        raise ValueError("No valid numeric columns found for normalization")
+    
     scaler = StandardScaler()
-    df_copy[columns] = scaler.fit_transform(df_copy[columns])
+    df_copy[valid_columns] = scaler.fit_transform(df_copy[valid_columns])
     
     return df_copy
 
@@ -85,7 +114,7 @@ def get_column_info(df: pd.DataFrame) -> Dict[str, Any]:
             'name': col,
             'dtype': str(df[col].dtype),
             'null_count': int(df[col].isnull().sum()),
-            'null_percentage': float(df[col].isnull().sum() / len(df) * 100),
+            'null_percentage': float(df[col].isnull().sum() / len(df) * 100) if len(df) > 0 else 0.0,
             'unique_count': int(df[col].nunique())
         }
         
