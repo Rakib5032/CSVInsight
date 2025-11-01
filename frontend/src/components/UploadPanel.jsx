@@ -158,8 +158,8 @@ const UploadPanel = () => {
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 mb-4 shadow-lg">
               <Sparkles size={32} className="text-white" />
             </div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome to CSVInsight</h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
+            <h2 className="text-3xl font-bold mb-2">Welcome to CSVInsight</h2>
+            <p className="text-gray-400 max-w-2xl mx-auto">
               Your intelligent companion for data analysis and preprocessing. Upload your CSV file to unlock powerful insights, visualizations, and ML-ready data transformations.
             </p>
           </div>
@@ -264,7 +264,7 @@ const UploadPanel = () => {
 
           {/* Learning Resources */}
           <div className="mt-8">
-            <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <h3 className="text-xl font-bold text-white-900 mb-4 flex items-center gap-2">
               <BookOpen className="text-violet-600" size={24} />
               Learning Resources
             </h3>
@@ -314,8 +314,8 @@ const UploadPanel = () => {
         <>
           {/* Dashboard Title */}
           <div className="mb-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Dashboard Overview</h2>
-            <p className="text-gray-600">Comprehensive summary of your dataset with actionable insights</p>
+            <h2 className="text-3xl font-bold text-white-900 mb-2">Dashboard Overview</h2>
+            <p className="text-white-600">Comprehensive summary of your dataset with actionable insights</p>
           </div>
 
           {/* Data Quality Insight */}

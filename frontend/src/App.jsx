@@ -97,7 +97,7 @@ function App() {
       </header>
 
       {/* Navigation */}
-      <nav className="border-b border-white/10 backdrop-blur-sm bg-black/20 sticky top-0 z-40">
+      <nav className="border-b border-white/20 backdrop-blur-sm bg-black/70 sticky top-0 z-40">
         <div className="container mx-auto px-4 py-3">
           <div className="flex gap-2 overflow-x-auto">
             <TabButton icon={Upload} label="Dashboard" value="upload" />
@@ -180,37 +180,36 @@ function App() {
   );
 }
 
-// src/App.jsx
-import { useEffect } from "react";
+// // src/App.jsx
+// import { useEffect } from "react";
 
-function App() {
+// function App() {
 
-  // ⏱ Keep-alive ping every 4 minutes
-  useEffect(() => {
-    const pingBackend = () => {
-      fetch("https://lensify-bakcend.onrender.com/health")
-        .then(res => res.json())
-        .then(data => console.log("Keep-alive:", data))
-        .catch(err => console.log("Ping failed:", err));
-    };
+//   // ⏱ Keep-alive ping every 4 minutes
+//   useEffect(() => {
+//     const pingBackend = () => {
+//       fetch("https://lensify-bakcend.onrender.com/health")
+//         .then(res => res.json())
+//         .then(data => console.log("Keep-alive:", data))
+//         .catch(err => console.log("Ping failed:", err));
+//     };
 
-    // Ping immediately once
-    pingBackend();
+//     // Ping immediately once
+//     pingBackend();
 
-    // Ping every 4 minutes (240,000 ms)
-    const interval = setInterval(pingBackend, 600000);
+//     // Ping every 4 minutes (240,000 ms)
+//     const interval = setInterval(pingBackend, 600000);
 
-    // Cleanup interval on component unmount
-    return () => clearInterval(interval);
-  }, []);
+//     // Cleanup interval on component unmount
+//     return () => clearInterval(interval);
+//   }, []);
 
-  return (
-    <div>
-      <h1>Lensify Frontend</h1>
-      {/* Your normal UI */}
-    </div>
-  );
-}
+  // return (
+  //   <div>
+  //     <h1>Lensify Frontend</h1>
+  //     {/* Your normal UI */}
+  //   </div>
+  // );
 
 
 
