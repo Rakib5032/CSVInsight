@@ -9,7 +9,7 @@ function App() {
 
   const handleDownload = async () => {
     if (!sessionId) return;
-    
+
     try {
       const response = await fetch(`http://localhost:8000/api/download/${sessionId}`);
       const blob = await response.blob();
@@ -30,13 +30,12 @@ function App() {
     <button
       onClick={() => setActiveTab(value)}
       disabled={!csvSummary && value !== 'upload'}
-      className={`flex items-center gap-2 px-4 py-3 rounded-lg font-medium transition-all ${
-        activeTab === value
+      className={`flex items-center gap-2 px-4 py-3 rounded-lg font-medium transition-all ${activeTab === value
           ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-lg shadow-violet-500/50'
           : csvSummary || value === 'upload'
-          ? 'bg-white/10 text-gray-300 hover:bg-white/20'
-          : 'bg-white/5 text-gray-500 cursor-not-allowed'
-      }`}
+            ? 'bg-white/10 text-gray-300 hover:bg-white/20'
+            : 'bg-white/5 text-gray-500 cursor-not-allowed'
+        }`}
     >
       <Icon size={18} />
       <span className="hidden sm:inline">{label}</span>
@@ -48,9 +47,8 @@ function App() {
       {/* Notification */}
       {notification && (
         <div
-          className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-6 py-4 rounded-lg shadow-2xl animate-slide-in ${
-            notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'
-          }`}
+          className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-6 py-4 rounded-lg shadow-2xl animate-slide-in ${notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+            }`}
         >
           {notification.type === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
           <span className="font-medium">{notification.message}</span>
@@ -181,5 +179,39 @@ function App() {
     </div>
   );
 }
+
+// src/App.jsx
+import { useEffect } from "react";
+
+function App() {
+
+  // ⏱ Keep-alive ping every 4 minutes
+  useEffect(() => {
+    const pingBackend = () => {
+      fetch("https://lensify-bakcend.onrender.com/health")
+        .then(res => res.json())
+        .then(data => console.log("Keep-alive:", data))
+        .catch(err => console.log("Ping failed:", err));
+    };
+
+    // Ping immediately once
+    pingBackend();
+
+    // Ping every 4 minutes (240,000 ms)
+    const interval = setInterval(pingBackend, 600000);
+
+    // Cleanup interval on component unmount
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div>
+      <h1>Lensify Frontend</h1>
+      {/* Your normal UI */}
+    </div>
+  );
+}
+
+
 
 export default App;

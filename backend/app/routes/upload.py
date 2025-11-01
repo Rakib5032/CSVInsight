@@ -1,12 +1,79 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse
 import pandas as pd
+import numpy as np
 import uuid
 import io
 from app.utils.data_store import store_dataframe
 from app.utils.preprocessing import get_column_info
 
 router = APIRouter()
+
+def detect_column_types(df: pd.DataFrame):
+    """Enhanced column type detection"""
+    numeric_cols = []
+    categorical_cols = []
+    datetime_cols = []
+    
+    for col in df.columns:
+        # Skip if all null
+        if df[col].isnull().all():
+            categorical_cols.append(col)
+            continue
+        
+        # Get non-null sample
+        sample = df[col].dropna()
+        if len(sample) == 0:
+            categorical_cols.append(col)
+            continue
+        
+        # Check if datetime
+        if pd.api.types.is_datetime64_any_dtype(df[col]):
+            datetime_cols.append(col)
+            continue
+        
+        # Check if already numeric dtype
+        if pd.api.types.is_numeric_dtype(df[col]):
+            numeric_cols.append(col)
+            continue
+        
+        # Try to convert to numeric (handles strings like "123", "45.6")
+        try:
+            # Remove common non-numeric characters
+            cleaned = sample.astype(str).str.replace(',', '').str.strip()
+            pd.to_numeric(cleaned, errors='raise')
+            
+            # If successful, convert the entire column
+            df[col] = pd.to_numeric(
+                df[col].astype(str).str.replace(',', '').str.strip(), 
+                errors='coerce'
+            )
+            numeric_cols.append(col)
+        except (ValueError, TypeError):
+            # Check if it's a date column
+            try:
+                pd.to_datetime(sample, errors='raise')
+                df[col] = pd.to_datetime(df[col], errors='coerce')
+                datetime_cols.append(col)
+            except:
+                # It's categorical
+                categorical_cols.append(col)
+    
+    return numeric_cols, categorical_cols, datetime_cols
+
+def handle_null_representations(df: pd.DataFrame):
+    """Replace common null representations with actual NaN"""
+    null_values = ['-', '--', 'N/A', 'NA', 'n/a', 'null', 'NULL', 'None', 'none', '', ' ', 'NaN', 'nan']
+    
+    # Replace in entire dataframe
+    df.replace(null_values, np.nan, inplace=True)
+    
+    # Also handle whitespace-only strings
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            df[col] = df[col].apply(lambda x: np.nan if isinstance(x, str) and x.strip() == '' else x)
+    
+    return df
 
 @router.post("/upload")
 async def upload_csv(file: UploadFile = File(...)):
@@ -19,18 +86,25 @@ async def upload_csv(file: UploadFile = File(...)):
     try:
         # Read CSV file
         contents = await file.read()
-        df = pd.read_csv(io.BytesIO(contents))
+        
+        # Read with common null values
+        df = pd.read_csv(
+            io.BytesIO(contents),
+            na_values=['-', '--', 'N/A', 'NA', 'n/a', 'null', 'NULL', 'None', 'none', 'NaN', 'nan'],
+            keep_default_na=True
+        )
+        
+        # Additional null handling
+        df = handle_null_representations(df)
+        
+        # Detect column types with enhanced logic
+        numeric_cols, categorical_cols, datetime_cols = detect_column_types(df)
         
         # Generate unique session ID
         session_id = str(uuid.uuid4())
         
         # Store DataFrame
         store_dataframe(session_id, df)
-        
-        # Get column information
-        numeric_cols = df.select_dtypes(include=['int64', 'float64']).columns.tolist()
-        categorical_cols = df.select_dtypes(include=['object']).columns.tolist()
-        datetime_cols = df.select_dtypes(include=['datetime64']).columns.tolist()
         
         # Create summary
         summary = {
